@@ -2,9 +2,8 @@
   "compilerOptions": {
     "strict": true,
     "sourceMap": true,
-    "declaration": true,
-    "declarationDir": "dist/types/",
     "noImplicitAny": true,
+    "removeComments": true,
     "target": "es6",
     "module": "es6",
     "moduleResolution": "node",
@@ -14,8 +13,11 @@
     "jsx": "react",
     "lib": ["es6", "dom"],
     "baseUrl": ".",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*", "types"],
-  "exclude": ["**/__tests__", "node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["test/*", "node_modules"]
 }

@@ -1,7 +1,7 @@
 import type { App } from './types'
 import { mapMixin } from './mixin'
 import { importHtml } from './html-loader'
-import { lifecycleCheck } from './util'
+import { lifecycleCheck, reverse } from './util'
 export enum Status {
   NOT_LOADED = 'NOT_LOADED',
   LOADING = 'LOADING',
@@ -24,7 +24,7 @@ export function register(name: string, url: string, match: any): void {
     url,
     match,
     status: Status.NOT_LOADED
-  } as App)
+  })
 }
 
 export function start(): void {
@@ -98,11 +98,11 @@ async function runLoad(app: App): Promise<any> {
   app.loaded = Promise.resolve().then(async () => {
     app.status = Status.LOADING
     let mixinLife = mapMixin()
-    app.host = (await loadShadowDOM(app)) as any
+    app.host = loadShadowDOM(app)
     const { lifecycle: selfLife, bodyNode, styleNodes } = await importHtml(app)
     lifecycleCheck(selfLife)
     app.host.shadowRoot?.appendChild(bodyNode.content.cloneNode(true))
-    for (const k of styleNodes)
+    for (const k of reverse(styleNodes))
       app.host.shadowRoot!.insertBefore(k, app.host.shadowRoot!.firstChild)
     app.status = Status.NOT_BOOTSTRAPPED
     app.bootstrap = compose(mixinLife.bootstrap.concat(selfLife.bootstrap))
@@ -114,25 +114,22 @@ async function runLoad(app: App): Promise<any> {
   return app.loaded
 }
 
-async function loadShadowDOM(app: App): Promise<HTMLElement> {
-  return new Promise<HTMLElement>((resolve) => {
-    class Berial extends HTMLElement {
-      static get tag(): string {
-        return app.name
-      }
-      connectedCallback(): void {
-        resolve(this)
-      }
-      constructor() {
-        super()
-        this.attachShadow({ mode: 'open' })
-      }
+function loadShadowDOM(app: App): any {
+  let host = null
+  class Berial extends HTMLElement {
+    static get tag(): string {
+      return app.name
     }
-    const hasDef = window.customElements.get(app.name)
-    if (!hasDef) {
-      customElements.define(app.name, Berial)
+    constructor() {
+      super()
+      host = this.attachShadow({ mode: 'open' })
     }
-  })
+  }
+  const hasDef = window.customElements.get(app.name)
+  if (!hasDef) {
+    customElements.define(app.name, Berial)
+  }
+  return host
 }
 
 async function runUnmount(app: App): Promise<App> {
@@ -197,12 +194,11 @@ window.removeEventListener = function (name: any, fn: any): void {
 function polyfillHistory(fn: any): () => void {
   return function (): void {
     const before = window.location.href
-    // @ts-ignore
-    fn.apply(this, arguments)
+    fn.apply(window.history, arguments)
     const after = window.location.href
     if (before !== after) {
-      // @ts-ignore
-      reroute(new PopStateEvent('popstate'))
+      new PopStateEvent('popstate')
+      reroute()
     }
   }
 }

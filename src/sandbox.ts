@@ -1,9 +1,7 @@
-import { ProxyType, Lifecycle } from './types'
-
-export function run(code: string, options: any): any {
+export function run(code: string, options: any = {}): any {
   try {
     if (checkSyntax(code)) {
-      let handler = {
+      const handler = {
         get(obj: any, prop: string): any {
           return Reflect.has(obj, prop) ? obj[prop] : null
         },
@@ -15,7 +13,7 @@ export function run(code: string, options: any): any {
           return obj && Reflect.has(obj, prop)
         }
       }
-      let captureHandler = {
+      const captureHandler = {
         get(obj: any, prop: string): any {
           return Reflect.get(obj, prop)
         },
@@ -27,7 +25,7 @@ export function run(code: string, options: any): any {
         }
       }
 
-      let allowList = {
+      const allowList = {
         IS_BERIAL_SANDBOX: true,
         __proto__: null,
         console,
@@ -49,8 +47,8 @@ export function run(code: string, options: any): any {
         performance,
         MessageChannel,
         SVGElement,
-        HTMLIFrameElement,
         HTMLElement,
+        HTMLIFrameElement,
         history,
         Map,
         Set,
@@ -60,6 +58,8 @@ export function run(code: string, options: any): any {
         localStorage,
         decodeURI,
         encodeURI,
+        decodeURIComponent,
+        encodeURIComponent,
         fetch: fetch.bind(window),
         setTimeout: setTimeout.bind(window),
         clearTimeout: clearTimeout.bind(window),
@@ -69,31 +69,49 @@ export function run(code: string, options: any): any {
         cancelAnimationFrame: cancelAnimationFrame.bind(window),
         addEventListener: addEventListener.bind(window),
         removeEventListener: removeEventListener.bind(window),
+        // eslint-disable-next-line no-shadow
         eval: function (code: string): any {
           return run('return ' + code, null)
         },
         alert: function (): void {
           alert('Sandboxed alert:' + arguments[0])
         },
+        // position related properties
+        innerHeight,
+        innerWidth,
+        outerHeight,
+        outerWidth,
+        pageXOffset,
+        pageYOffset,
+        screen,
+        screenLeft,
+        screenTop,
+        screenX,
+        screenY,
+        scrollBy,
+        scrollTo,
+        scrollX,
+        scrollY,
+        // custom allow list
         ...(options.allowList || {})
       }
 
       if (!Object.isFrozen(String.prototype)) {
         for (const k in allowList) {
           const fn = allowList[k]
-          if (fn.prototype) {
+          if (typeof fn === 'object' && fn.prototype) {
             Object.freeze(fn.prototype)
           }
-          if (k !== 'localStorage') {
+          if (typeof fn === 'function') {
             Object.freeze(fn)
           }
         }
       }
-      let proxy = new Proxy(allowList, handler)
-      let capture = new Proxy(
+      const proxy = new Proxy(allowList, handler)
+      const capture = new Proxy(
         {
           __proto__: null,
-          proxy: proxy,
+          proxy,
           globalThis: new Proxy(allowList, handler),
           window: new Proxy(allowList, handler),
           self: new Proxy(allowList, handler)
