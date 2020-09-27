@@ -2,16 +2,28 @@ import type { App } from './types'
 import { mapMixin } from './mixin'
 import { importHtml } from './html-loader'
 import { lifecycleCheck, reverse } from './util'
+
+/**
+ * load → bootstrap → mount → umount
+ **/
 export enum Status {
+  // 未加载
   NOT_LOADED = 'NOT_LOADED',
+  // 加载中
   LOADING = 'LOADING',
+  // 加载完成 / 尚未启动
   NOT_BOOTSTRAPPED = 'NOT_BOOTSTRAPPED',
+  // 启动中
   BOOTSTRAPPING = 'BOOTSTRAPPING',
+  // 启动完成 / 尚未装载
   NOT_MOUNTED = 'NOT_MOUNTED',
+  // 装载中
   MOUNTING = 'MOUNTING',
+  // 装载完成
   MOUNTED = 'MOUNTED',
   UPDATING = 'UPDATING',
   UPDATED = 'UPDATED',
+  // 卸载中
   UNMOUNTING = 'UNMOUNTING'
 }
 
@@ -27,6 +39,7 @@ export function register(name: string, url: string, match: any): void {
   })
 }
 
+// 开始、启动
 export function start(): void {
   started = true
   reroute()
@@ -35,12 +48,15 @@ export function start(): void {
 function reroute(): Promise<void> {
   const { loads, mounts, unmounts } = getAppChanges()
 
+  //
   return started ? perform() : init()
 
+  // 初始化
   async function init(): Promise<void> {
     await Promise.all(loads.map(runLoad))
   }
 
+  // 执行，运转
   async function perform(): Promise<void> {
     unmounts.map(runUnmount)
 
@@ -57,6 +73,10 @@ function reroute(): Promise<void> {
   }
 }
 
+/**
+ * 获取 apps 的变化，输出 loads/mounts/unmounts
+ * 遍历 apps，根据 url 调整 loads/mounts/unmounts 生命周期下 app 的状态
+ */
 function getAppChanges(): {
   unmounts: App[]
   loads: App[]
@@ -67,6 +87,7 @@ function getAppChanges(): {
   const mounts: App[] = []
 
   apps.forEach((app: any) => {
+    // 判断 app 是否活跃
     const isActive: boolean = app.match(window.location)
     switch (app.status) {
       case Status.NOT_LOADED:
@@ -132,13 +153,19 @@ function loadShadowDOM(app: App): Promise<DocumentFragment> {
   })
 }
 
+// 卸载子应用
 async function runUnmount(app: App): Promise<App> {
+  // 如果 app 未挂载则退出，只有已挂载的 app 才能卸载。
   if (app.status != Status.MOUNTED) {
     return app
   }
+  // 标记 app 状态为 正在卸载
   app.status = Status.UNMOUNTING
+  // 执行卸载
   await app.unmount(app)
+  // 标记 app 状态为 NOT_MOUNTED
   app.status = Status.NOT_MOUNTED
+  // 返回 app 状态
   return app
 }
 
