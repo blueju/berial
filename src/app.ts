@@ -114,6 +114,7 @@ function compose(
     fns.reduce((p, fn) => p.then(() => fn(app)), Promise.resolve())
 }
 
+// 加载
 async function runLoad(app: App): Promise<any> {
   if (app.loaded) return app.loaded
   app.loaded = Promise.resolve().then(async () => {
@@ -148,6 +149,8 @@ function loadShadowDOM(app: App): Promise<DocumentFragment> {
     }
     const hasDef = window.customElements.get(app.name)
     if (!hasDef) {
+      // 参考地址
+      // https://developer.mozilla.org/zh-CN/docs/Web/Web_Components/Using_shadow_DOM#使用我们的_custom_element
       customElements.define(app.name, Berial)
     }
   })
